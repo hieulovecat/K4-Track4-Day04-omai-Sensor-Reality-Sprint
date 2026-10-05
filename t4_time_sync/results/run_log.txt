@@ -1,0 +1,31 @@
+[run] 2026-10-05T16:47:45 python 3.11.7 numpy 1.26.4 cmd: benchmark.py
+[cfg] {'duration_s': 20.0, 'lidar_hz': 10.0, 'lidar_sigma_m': 0.05, 'radar_hz': 20.0, 'radar_sigma_m': 0.15, 'radar_phase_s': 0.013, 'gate_m': 1.0, 'offsets_ms': [0, 25, 50, 100, 150, 200], 'speeds_mps': [5, 10, 20, 30], 'main_speed_mps': 20, 'scenario_offset_ms': 100, 'jitter_ms': 30, 'search_ms': 300, 'seeds': [0, 1, 2, 3, 4]}
+  scenario  offset_ms     method  pos_err_m_mean  ghost_rate_mean  traj_residual_m_mean  offset_est_err_ms_mean
+  straight          0       none            0.19             0.00                  0.22                     NaN
+  straight          0 comp_known            0.19             0.00                  0.22                     NaN
+  straight          0   comp_est            0.19             0.00                  0.22                    0.20
+  straight         25       none            0.53             0.26                  0.55                     NaN
+  straight         25 comp_known            0.19             0.00                  0.22                     NaN
+  straight         25   comp_est            0.19             0.00                  0.22                    0.20
+  straight         50       none            1.02            54.61                  1.03                     NaN
+  straight         50 comp_known            0.19             0.00                  0.22                     NaN
+  straight         50   comp_est            0.19             0.00                  0.22                    0.20
+  straight        100       none            2.01           100.00                  2.02                     NaN
+  straight        100 comp_known            0.19             0.00                  0.22                     NaN
+  straight        100   comp_est            0.19             0.00                  0.22                    0.20
+  straight        150       none            3.01           100.00                  3.01                     NaN
+  straight        150 comp_known            0.20             0.00                  0.22                     NaN
+  straight        150   comp_est            0.20             0.00                  0.22                    0.20
+  straight        200       none            4.01           100.00                  4.01                     NaN
+  straight        200 comp_known            0.20             0.00                  0.22                     NaN
+  straight        200   comp_est            0.20             0.00                  0.22                    0.20
+  maneuver        100       none            1.63            94.40                  1.68                     NaN
+  maneuver        100 comp_known            0.19             0.00                  0.22                     NaN
+  maneuver        100   comp_est            0.19             0.00                  0.22                    0.20
+    jitter        100       none            1.99            94.29                  2.09                     NaN
+    jitter        100 comp_known            0.54            11.73                  0.65                     NaN
+    jitter        100   comp_est            0.54            11.57                  0.65                    1.00
+standstill        100       none            0.19             0.00                  0.22                     NaN
+standstill        100 comp_known            0.19             0.00                  0.22                     NaN
+standstill        100   comp_est            0.19             0.00                  0.22                  123.00
+[done] 405 dong ket qua -> D:\AI_thucchien\Lab\K4-Track4-Day04-omai-Sensor-Reality-Sprint\t4_time_sync\results
