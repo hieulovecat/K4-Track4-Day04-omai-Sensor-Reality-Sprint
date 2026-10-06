@@ -1,5 +1,7 @@
 # T4 — Time sync / motion compensation (LiDAR ↔ radar, xe ADAS)
 
+Benchmark **mô phỏng 2D** của nhóm omai, gồm 4 thành viên. Xem [danh sách nhóm](../TEAMMATES.md), [phân công nghiên cứu](../docs/PHAN_CONG_NGHIEN_CUU.md) và [mẫu báo cáo hoặc slide cá nhân](../docs/TEMPLATE_RESEARCH.md).
+
 ## 1. Problem (Bước 1)
 
 | Nhóm cần chốt | Nội dung |
@@ -9,7 +11,7 @@
 | Claim ban đầu | Khi Δ tăng, sai số vị trí tăng xấp xỉ **v × Δ**, ghost rate tăng vọt khi v × Δ vượt gate liên kết; bù chuyển động đưa sai số về mức nhiễu sensor |
 | Metric và đơn vị | offset error (m), ghost rate (%), trajectory residual (m), sai số ước lượng offset (ms) — định nghĩa ở mục 3 |
 | Baseline và điều kiện lỗi | Baseline Δ = 0 ms; lỗi Δ = 25 / 50 / 100 / 150 / 200 ms; v = 5 / 10 / 20 / 30 m/s |
-| Phân công 5 thành viên | *(điền tên)* — đọc nguồn: …; chạy code: …; ghi benchmark: …; failure case: …; trình bày: … |
+| Phân công 4 thành viên | Phạm Minh Hiếu: paper/repo; Đoàn Quang Thắng: tổng hợp và trình bày; Nguyễn Tuấn Khanh: mã nguồn, chạy thử và benchmark; Nguyễn Hữu Chương: failure case và cải tiến. Chi tiết ở [bảng phân công](../docs/PHAN_CONG_NGHIEN_CUU.md). |
 
 ## 2. Method (Bước 2)
 
@@ -38,8 +40,10 @@
 | | Input | Output | Giả định |
 |---|---|---|---|
 | `none` | điểm radar + timestamp | dùng nguyên | timestamp đúng |
-| `comp_known` | điểm radar, Δ từ datasheet, vận tốc ước lượng từ track LiDAR | `z + v·Δ` | biết Δ, vận tốc gần không đổi trong khoảng Δ |
-| `comp_est` | chuỗi radar + chuỗi LiDAR | Δ̂ = argmin RMS residual (grid search ±300 ms, bước 1 ms), rồi bù `z + v·Δ̂` | Δ không đổi, đối tượng **phải chuyển động** để Δ quan sát được |
+| `comp_known` | điểm radar, Δ đúng từ cấu hình mô phỏng, vận tốc ước lượng từ track LiDAR | `z + v·Δ` | biết Δ; trên hệ thật cần nguồn hiệu chuẩn đáng tin cậy |
+| `comp_est` | chuỗi radar + chuỗi LiDAR | Tìm Δ̂ làm radar gần nhất với LiDAR nội suy tại `t − Δ̂` (grid search ±300 ms, bước 1 ms), rồi bù `z + v·Δ̂` | Δ không đổi, đối tượng **phải chuyển động** để Δ quan sát được |
+
+Bù chuyển động dùng vận tốc LiDAR tại `t − Δ̂/2` (điểm giữa khoảng bù), tính bằng sai phân và nội suy. Bộ ước lượng hiện dùng cả chuỗi dữ liệu offline; chưa đo khả năng chạy online hoặc độ trễ xử lý.
 
 ## 3. Benchmark (Bước 3–4)
 
@@ -51,23 +55,51 @@
   - **Trajectory residual (m)** — RMS khoảng cách radar ↔ LiDAR. Không cần ground truth, có thể **giám sát online** trên xe.
   - **Offset estimation error (ms)** — `|Δ̂ − Δ|`, chỉ với `comp_est`.
 
-**Chạy lại:**
+### Chạy lại từ thư mục gốc repository
+
+**Môi trường:** Python 3.11; NumPy 1.26, pandas 2.2, Matplotlib 3.10; Pillow để xuất GIF. Log đã lưu ghi Python 3.11.7 và NumPy 1.26.4; chưa ghi phiên bản chính xác của các thư viện còn lại. Lệnh dưới đây tạo môi trường riêng và thư mục đầu ra mới trên Linux/Bash:
 
 ```bash
-python benchmark.py
+T4_VENV=$(mktemp -d /tmp/omai-t4-venv-XXXXXX)
+python3.11 -m venv "$T4_VENV"
+source "$T4_VENV/bin/activate"
+python -m pip install 'numpy==1.26.4' 'pandas>=2.2,<2.3' 'matplotlib>=3.10,<3.11' Pillow
+
+T4_RUN_DIR=$(mktemp -d /tmp/omai-t4-run-XXXXXX)
+python -m pip freeze > "$T4_RUN_DIR/environment.txt"
+set -o pipefail
+python t4_time_sync/benchmark.py --out "$T4_RUN_DIR" 2>&1 | tee "$T4_RUN_DIR/run_log.txt"
 ```
 
-Yêu cầu Python 3.11, numpy 1.26, pandas 2.2, matplotlib 3.10. Kết quả: `results/summary.md` (bảng), `results/results_raw.csv`, `results/results_agg.csv`, `results/run_log.txt`, `results/fig*.png`.
+Nếu máy dùng `python3` cho Python 3.11, có thể thay `python3.11` bằng `python3`. Mỗi lần chạy lại, tạo `T4_RUN_DIR` mới. Kết quả nằm tại đường dẫn trong biến này, tách khỏi bằng chứng hiện có trong `results/`.
+
+Script tự tạo `summary.md`, `results_raw.csv`, `results_agg.csv` và 6 tệp `fig*.png`. **Log không được script tự ghi thành tệp**: lệnh `tee` phía trên lưu toàn bộ đầu ra vào `run_log.txt`; `environment.txt` lưu phiên bản thư viện của lần chạy mới.
+
+### Bằng chứng đã lưu
+
+| Tệp | Nội dung |
+|---|---|
+| [summary.md](results/summary.md) | Bảng kết quả chính, kiểm tra công thức và các tình huống lỗi. |
+| [results_raw.csv](results/results_raw.csv) | 405 dòng: 27 cấu hình × 3 phương pháp × 5 seed. |
+| [results_agg.csv](results/results_agg.csv) | 81 dòng tổng hợp, có trung bình và độ lệch chuẩn giữa seed. |
+| [run_log.txt](results/run_log.txt) | Bằng chứng lần chạy đã lưu; đường dẫn Windows trong log là máy thực hiện lần chạy đó. |
+| [fig1](results/fig1_timeline.png), [fig2](results/fig2_metrics_vs_offset.png), [fig3](results/fig3_formula_check.png) | Timeline, metric theo offset và kiểm tra `v × Δ`. |
+| [fig4](results/fig4_scenarios.png), [fig5](results/fig5_trajectory_turn.png), [fig6](results/fig6_offset_cost.png) | Các kịch bản, quỹ đạo phanh/rẽ và hàm chi phí ước lượng offset. |
+
+Mỗi seed mô phỏng 20 s với 200 mẫu LiDAR và 400 mẫu radar trước khi lọc biên; **382 mẫu radar** được đánh giá cho mỗi cấu hình. Metric được tính trên từng seed rồi tổng hợp; p95 trong bảng là trung bình p95 của 5 seed.
 
 ### Kết quả chính (v = 20 m/s ≈ 72 km/h, đi thẳng, trung bình 5 seed)
 
-| Δ (ms) | Offset error, không bù (m) | Ghost rate, không bù (%) | Residual, không bù (m) | Offset error, có bù (m) | Ghost rate, có bù (%) |
+| Δ (ms) | Offset error, không bù (m) | Ghost rate, không bù (%) | Residual, không bù (m) | Offset error, `comp_known` (m) | Ghost rate, `comp_known` (%) |
 |---|---|---|---|---|---|
 | 0 (baseline) | 0,19 | 0,0 | 0,22 | 0,19 | 0,0 |
 | 25 | 0,53 | 0,3 | 0,55 | 0,19 | 0,0 |
 | 50 | 1,02 | 54,6 | 1,03 | 0,19 | 0,0 |
 | 100 | 2,01 | 100 | 2,02 | 0,19 | 0,0 |
+| 150 | 3,01 | 100 | 3,01 | 0,20 | 0,0 |
 | 200 | 4,01 | 100 | 4,01 | 0,20 | 0,0 |
+
+Các cột có bù dùng **`comp_known`**. Kết quả `comp_est` được trình bày riêng trong [summary.md](results/summary.md); với chuyển động thẳng, sai số ước lượng offset trung bình là 0,2 ms trong mô phỏng này.
 
 - Công thức **sai số ≈ v × Δ** đúng với tỉ lệ đo/dự đoán ≈ 1,0 khi v × Δ lớn hơn nhiều so với nhiễu (bảng 2 trong `summary.md`, `fig3`). Khi v × Δ nhỏ (ví dụ 5 m/s × 25 ms = 0,12 m), nhiễu radar 0,15 m chiếm phần lớn sai số.
 - **Offset tới hạn** = gate / v: 200 ms ở 18 km/h, 50 ms ở 72 km/h, **33 ms ở 108 km/h**.
@@ -76,7 +108,9 @@ Yêu cầu Python 3.11, numpy 1.26, pandas 2.2, matplotlib 3.10. Kết quả: `r
 
 ### Video demo
 
-`python demo_video.py` → [results/demo_time_sync.gif](results/demo_time_sync.gif) (khoảng 22 s, 4 chương: Δ = 0 / 50 / 100 ms và jitter 100 ± 30 ms; ảnh tĩnh `results/demo_frame_ch*.png`). Xe nhìn từ trên xuống, camera bám theo xe; hình vuông đen là LiDAR, chấm cam là radar không bù, chấm xanh là radar đã bù, vòng chấm là gate 1 m. Khi radar rơi ra ngoài gate, video vẽ khung xe nét đứt với nhãn **GHOST**.
+Mở [results/demo_time_sync.gif](results/demo_time_sync.gif) để xem demo đã lưu (khoảng 22 s, 4 chương: Δ = 0 / 50 / 100 ms và jitter 100 ± 30 ms; ảnh tĩnh `results/demo_frame_ch*.png`). Xe nhìn từ trên xuống, camera bám theo xe; hình vuông đen là LiDAR, chấm cam là radar không bù, chấm xanh là radar bù bằng **offset danh định (`comp_known`)**, vòng chấm là gate 1 m. Khi radar rơi ra ngoài gate, video vẽ khung xe nét đứt với nhãn **GHOST**; đây là minh họa proxy, không phải đầu ra tracker thật.
+
+`demo_video.py` hiện xuất cố định vào `t4_time_sync/results/` và chưa hỗ trợ `--out`; chạy lại sẽ ghi đè GIF và một số ảnh demo đã lưu. Hướng dẫn tái hiện benchmark phía trên chỉ tạo CSV/bảng/plot ở thư mục mới, không tạo GIF.
 
 ![demo](results/demo_time_sync.gif)
 
@@ -100,7 +134,29 @@ Yêu cầu Python 3.11, numpy 1.26, pandas 2.2, matplotlib 3.10. Kết quả: `r
 
 ## 5. Engineering decision
 
+Các mục dưới đây là **đề xuất từ kết quả mô phỏng**, chưa được triển khai thành hệ giám sát/fallback và chưa kiểm chứng trên xe thật. Ngưỡng 0,5 m, 3/5 m/s và mục tiêu 10 ms cần kiểm chứng tiếp trước khi áp dụng.
+
 1. **Luôn bù chuyển động theo timestamp** ở tầng fusion; với v ≤ 30 m/s và gate 1 m, độ lệch còn lại sau sync phải **< 33 ms**, mục tiêu **< 10 ms** (sai số 0,3 m ở 108 km/h).
 2. **Giám sát trajectory residual online** (không cần ground truth): nếu RMS residual > 0,5 m kéo dài khi v > 5 m/s, báo lỗi time sync và giảm trọng số radar.
 3. **Chỉ ước lượng/cập nhật Δ̂ khi có đủ chuyển động** (ví dụ v > 3 m/s); khi đứng yên, giữ Δ̂ cũ, không cập nhật.
 4. **Jitter không bù được bằng một hằng số** → cần timestamp phần cứng hoặc PTP (IEEE 1588) ở driver, và log độ lệch tâm từng frame. Kiểm chứng lần sau: chạy lại kịch bản jitter với σ = 5/10/30 ms, mục tiêu ghost rate < 1 %.
+
+### Đánh đổi giữa các phương án
+
+| Phương án | Lợi ích trong phép thử | Chi phí / giới hạn | Khi nên dùng |
+|---|---|---|---|
+| Không bù (`none`) | Đơn giản; làm đối chứng. | Sai số tăng theo `v × Δ`; ở 20 m/s và 100 ms, sai số khoảng 2 m. | Baseline hoặc khi sai lệch thời gian nhỏ so với mức sai số chấp nhận được. |
+| Bù biết offset (`comp_known`) | Đưa sai số về khoảng 0,19–0,20 m khi offset ổn định. | Cần offset đúng và vận tốc từ track; một hằng số không sửa được jitter từng mẫu. | Offset đã hiệu chuẩn, ổn định và có track vận tốc phù hợp. |
+| Bù tự ước lượng (`comp_est`) | Không cần cung cấp offset đúng; sai số ước lượng 0,2 ms khi đi thẳng trong mô phỏng. | Tìm trên 601 giá trị offset bằng cả chuỗi offline; chưa đo runtime/latency. Đứng yên làm offset khó quan sát; jitter vi phạm giả định offset cố định. | Đoạn dữ liệu có chuyển động đủ rõ và offset ổn định; cần kiểm tra chất lượng ước lượng trước khi dùng. |
+| Timestamp phần cứng / PTP | Đề xuất xử lý lỗi từ nguồn tạo timestamp. | Cần phần cứng/driver phù hợp; hiệu quả chưa được đo trong bài này. | Hướng nghiên cứu tiếp khi jitter còn lớn sau bù offset trung bình. |
+
+## 6. Hoàn thiện báo cáo và nộp bài
+
+Nhóm sử dụng **4 thành viên** theo phạm vi đã thống nhất. Mỗi người hoàn thiện một **báo cáo hoặc bộ slide riêng**, đủ Problem → Method → Benchmark → Failure case → Engineering decision, dẫn tới bằng chứng chung và lưu trong repository. Dùng [mẫu nghiên cứu](../docs/TEMPLATE_RESEARCH.md) và [phân công](../docs/PHAN_CONG_NGHIEN_CUU.md).
+
+- [x] Có baseline, điều kiện lỗi, metric định lượng, mã nguồn, log, bảng/plot và GIF demo.
+- [x] Có nguồn tham khảo, mô tả phương pháp, giới hạn, failure case và đề xuất kiểm chứng tiếp.
+- [x] Có danh sách và phân công 4 thành viên, mẫu bản cá nhân.
+- [ ] Hoàn thiện 4 bản báo cáo/slide cá nhân; mẫu hiện chưa phải bản nộp.
+- [ ] Tập pitch 3–5 phút và kiểm tra mở được bằng chứng khi trình bày.
+- [ ] Mỗi người nộp riêng trên VLearn cùng URL repository chung, rồi mở lại kiểm tra tệp/link.
