@@ -4,7 +4,7 @@ Nhóm gồm **4 thành viên**, cùng thực hiện chủ đề **T4 — Lệch 
 
 | # | Họ và tên | MSSV | Vai trò |
 |---|---|---|---|
-| 1 | Phạm Minh Hiếu | 2A202602030 | Nghiên cứu paper/repo; giải thích phương pháp, giả định và giới hạn nguồn. |
+| 1 | Phạm Minh Hiếu | 2A202602630 | Nghiên cứu paper/repo; giải thích phương pháp, giả định và giới hạn nguồn. |
 | 2 | Đoàn Quang Thắng | 2A202602395 | Xác định bài toán; tổng hợp kết quả và chuẩn bị trình bày. |
 | 3 | Nguyễn Tuấn Khanh | 2A202602819 | Kiểm tra mã nguồn; phụ trách chạy thử, cấu hình và ghi nhận benchmark. |
 | 4 | Nguyễn Hữu Chương | 2A202602601 | Phân tích tình huống lỗi (failure case); đề xuất cải tiến và cách kiểm chứng. |
